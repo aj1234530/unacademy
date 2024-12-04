@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
+import axios from "axios";
+import { useState, useEffect } from "react";
 import {
     ControlBar,
     GridLayout,
@@ -7,17 +7,19 @@ import {
     ParticipantTile,
     RoomAudioRenderer,
     useParticipants,
-    useTracks, Chat, ChatToggle,
-    ChatEntry, PreJoin, VoiceAssistantControlBar
-} from '@livekit/components-react';
+    useParticipantTile,
+    useTracks,
+    Chat,
+    PreJoin,
+    VoiceAssistantControlBar,
+} from "@livekit/components-react";
 
-import '@livekit/components-styles';
+import "@livekit/components-styles";
 
-import { Track } from 'livekit-client';
-
+import { Participant, Track } from "livekit-client";
+import UploadForm from "./components/fileupload";
 
 const serverUrl = "ws://localhost:7880";
-
 
 export default function App() {
     const [roomName, setRoomName] = useState("");
@@ -26,14 +28,13 @@ export default function App() {
 
     const handleRoomCreation = async (e: any) => {
         e.preventDefault();
-        console.log(roomName, teacherName)
+        console.log(roomName, teacherName);
         const response = await axios.post("http://localhost:3000/createClass", {
             roomName: roomName,
-            teacherName: teacherName
-
-        })
+            teacherName: teacherName,
+        });
         setToken(response.data);
-    }
+    };
     const [studentRoomName, setStudentRoomName] = useState("");
     const [studentName, setStudentName] = useState("");
     const [studentToken, setStudentToken] = useState<any>("");
@@ -41,29 +42,41 @@ export default function App() {
         e.preventDefault();
         const response = await axios.post("http://localhost:3000/joinClass", {
             roomName: studentRoomName,
-            studentName: studentName
-
-        })
+            studentName: studentName,
+        });
         setStudentToken(response.data);
-    }
+    };
     return (
         <>
+            <UploadForm />
             <div>
                 <form onSubmit={handleRoomCreation}>
-                    <input placeholder='enter the class name by teacher' onChange={(e) => setRoomName(e.target.value)} />
-                    <input placeholder='enter your name' onChange={(e) => setTeacherName(e.target.value)} />
-                    <button type='submit'>Create class</button>
+                    <input
+                        placeholder="enter the class name by teacher"
+                        onChange={(e) => setRoomName(e.target.value)}
+                    />
+                    <input
+                        placeholder="enter your name"
+                        onChange={(e) => setTeacherName(e.target.value)}
+                    />
+                    <button type="submit">Create class</button>
                 </form>
             </div>
             <div>
                 {/* need to enter the same room name */}
                 <form onSubmit={handleStudentJoining}>
-                    <input placeholder='enter the class name' onChange={(e) => setStudentRoomName(e.target.value)} />
-                    <input placeholder='enter your name' onChange={(e) => setStudentName(e.target.value)} />
-                    <button type='submit'>Join class</button>
+                    <input
+                        placeholder="enter the class name"
+                        onChange={(e) => setStudentRoomName(e.target.value)}
+                    />
+                    <input
+                        placeholder="enter your name"
+                        onChange={(e) => setStudentName(e.target.value)}
+                    />
+                    <button type="submit">Join class</button>
                 </form>
             </div>
-            <PreJoin />
+
             <LiveKitRoom
                 video={true}
                 audio={true}
@@ -71,7 +84,7 @@ export default function App() {
                 serverUrl={serverUrl}
                 // Use the default LiveKit theme for nice styles.
                 data-lk-theme="default"
-                style={{ height: '100vh' }}
+                style={{ height: "100vh" }}
             >
                 {/* Your custom component with basic video conferencing functionality. */}
                 <MyVideoConference />
@@ -81,14 +94,9 @@ export default function App() {
         share tracks and to leave the room. */}
                 <ControlBar />
                 <VoiceAssistantControlBar />
-                <Chat >
-
-                </Chat>
-
+                <Chat></Chat>
             </LiveKitRoom>
-
         </>
-
     );
 }
 
@@ -97,30 +105,25 @@ function MyVideoConference() {
     // joins without a published camera track, a placeholder track is returned.
     const tracks = useTracks(
         [
-            { source: Track.Source.Camera, withPlaceholder: true },
+            { source: Track.Source.Camera, withPlaceholder: false },
+            { source: Track.Source.ScreenShare, withPlaceholder: false },
         ]
-    );
-    const participants = useParticipants();
 
+        // { onlySubscribed: false },
+    );
 
     return (
-        <GridLayout tracks={tracks} style={{ height: 'calc(100vh - var(--lk-control-bar-height))' }}>
+        <GridLayout
+            tracks={tracks}
+            style={{ height: "calc(100vh - var(--lk-control-bar-height))" }}
+        >
             {/* The GridLayout accepts zero or one child. The child is used
         as a template to render all passed in tracks. */}
 
             <ParticipantTile />
-
         </GridLayout>
     );
 }
-
-function JoinClass() {
-
-}
-
-
-
-
 
 // useEffect(() => {
 //     const fetchToken = async () => {
@@ -136,3 +139,6 @@ function JoinClass() {
 
 //     fetchToken();
 // }, []);
+
+// UploadForm.tsx
+

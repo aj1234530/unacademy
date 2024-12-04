@@ -11,6 +11,7 @@ import {
 import "@livekit/components-styles";
 import { Track } from "livekit-client";
 import AudioPlayer from "./components/AudioContext";
+import UploadForm from "./components/fileupload";
 
 const serverUrl = "ws://localhost:7880";
 
@@ -43,6 +44,7 @@ export default function App() {
 
     return (
         <>
+            <UploadForm />
             <AudioPlayer /> {/* This is for audio context, not working as of now */}
             <LiveKitRoom
                 video={true}
