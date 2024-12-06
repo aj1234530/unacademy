@@ -1,34 +1,27 @@
 import express,{Request,Response} from 'express';
 import multer,{FileFilterCallback} from 'multer';
-import fs from 'fs';
+import fs, { promises } from 'fs';
 import path from 'path';
 import {v4 as uuid} from 'uuid';
 import * as dotenv from 'dotenv';
 import cors from 'cors';
 dotenv.config();
 import { AccessToken ,AccessTokenOptions,VideoGrant} from 'livekit-server-sdk';
-
+import { PrismaClient } from '@prisma/client';
+const prisma  = new PrismaClient();
 //dir folder
 const dir = './uploads';
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir);
 }
 
-const createToken = async () => {
-    // If this room doesn't exist, it'll be automatically created when the first
-    // participant joins
-    const roomName = 'myroom';
-    // Identifier to be used for participant.
-    // It's available as LocalParticipant.identity with livekit-client SDK
-    const participantName = 'quickstart-username';
-  
+const createToken = async (roomName:string,participantIdentity:string) => {
+    
     const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
-      identity: `${participantName}-${Date.now()}` ,
-      // Token to expire after 10 minutes
+      identity: participantIdentity ,
       ttl: '10m',
     });
     at.addGrant({ roomJoin: true, room: roomName });
-  
     return await at.toJwt();
   };
   const app = express();
@@ -36,43 +29,6 @@ const createToken = async () => {
 app.use(express.json());
 app.use(cors())
 
-//serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
-const storage  = multer.diskStorage({
-  destination:(req,file,cb) =>{
-    cb(null,dir);
-  },
-  filename:(req,file,cb) =>{
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
-  }
-})
-
-// const fileFilter: multer.Options['fileFilter'] = (req,file,cb) =>{
-//   if(file.mimetype === 'application/pdf'){
-//     cb(null,true)
-//   }else{
-//     cb(new Error('Only PDF files are allowed'), false);
-//   }
-// }
-//multer instance
-
-const upload = multer({
-  storage:storage,
-  limits:{fileSize:10*1024*1024}
-})
-
-app.post('/upload',upload.single('file'),(req:Request,res:Response):any=>{
-  if(!req.file){
-    return res.status(400).send("no file uploaded")
-  }
-  return res.send(`pdf file uploaded: ${req.file.fieldname}`)
-})
-
-  app.get('/getToken',async(req,res)=>{
-    res.send(await createToken());
-  })
   app.get("/ping",(req,res)=>{
     res.status(200).json({message:"Pong"})
   })
@@ -83,7 +39,7 @@ app.post('/upload',upload.single('file'),(req:Request,res:Response):any=>{
     if(!roomName || !teacherName){
        res.status(400).json({message:"all manadatory"})
        return;
-    }~
+    }
     console.log("2")
 
     try {
@@ -95,7 +51,7 @@ app.post('/upload',upload.single('file'),(req:Request,res:Response):any=>{
         identity:`${teacherName}-${Date.now()}`,
         ttl: '10m'
       });
-      at.addGrant({roomJoin:true, room:roomName});
+      at.addGrant({roomJoin:true, room:roomName+Date.now()});
       return await at.toJwt();
       }
       res.status(200).send(await createTeacherToken()); //why awaiting>>as an async function, which means it always returns a Promise. 
@@ -139,12 +95,63 @@ app.post('/upload',upload.single('file'),(req:Request,res:Response):any=>{
        res.status(400).json({message:"Internal Error"});
     }
    })
+   
+
+app.post("/api/v1/signup",async(req:Request,res:Response):Promise<any>=>{
+  const {username,email,password} = req.body;
+  if(!username || !email || !password){
+    return res.status(409).json({message:"all fields manadatory "})
+  }
+  //TODO - JWT impln, 
+  //uniquesses of email will be checkd by the prisma itself
+ try {
+  const user = await prisma.user.create({
+    data:{
+      username: username,
+      email:email,
+      password:password
+    }
+  })
+  return res.status(200).json({message:"User created"})
+ } catch (error) {
+  res.status(500).json({message:"internal error"})
+ }
+})
+app.post("/api/v1/createSession",async(req:Request,res:Response)=>{
+    const {sessionTitle,email,startTime, status} = req.body;
+    //TODO - we will use email encoded in the jwt , for now we accept in request body;
+    try {
+      const sessionToken:string = await createToken(sessionTitle,email) // when calling await the async fxn so that resolves,using the sessiontitle as room name and the email as identity of the user
+    const session = await prisma.session.create({
+      data:{
+        sessionTitle:sessionTitle,
+        sessionId:`${Date.now()}`,//TODO - generate unique id
+        sessionToken: sessionToken,
+        userEmail: email,
+        startTime: startTime,
+        status:status,
+      }
+    })
+    res.status(200).json({sessionId:session.sessionId,sessionToken:session.sessionToken})
+    } catch (error) {
+      console.log(error)
+       res.status(500).json({message:"internal error"})
+    }
+})
+//token has been created , now need to have a endpoint for starting the stream
+app.post("/api/v1/session/:sessionId/start",async(req:Request,res:Response):Promise<any>=>{ 
+  const {sessionId} = req.params;
+  try {
+    const session = await prisma.session.findFirst({where:{sessionId}});
+    const token = session?.sessionToken;
+    return res.status(200).json({livekitToken:token})
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json(error)
+  }
+})
+
+
   app.listen(port,()=>{
     console.log(`Server listening on port ${port}`)
   })
-// console.log(process.env.LIVEKIT_API_KEY);
-
-
-//learnings
-//1. you need to call the function
-//2. you need to await the async function while calling (why?)

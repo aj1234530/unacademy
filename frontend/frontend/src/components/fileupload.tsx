@@ -60,7 +60,7 @@ const UploadForm: React.FC = () => {
                     <pre>{JSON.stringify(fileDetails, null, 2)}</pre>
                     {/* Display a link to the uploaded PDF */}
                     <a href={`http://localhost:3000${fileDetails.fileUrl}`} target="_self" rel="noopener noreferrer">
-                        View Uploaded PDF
+                        View Uploaded PbDF
                     </a>
                 </div>
             )}

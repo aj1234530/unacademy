@@ -12,11 +12,12 @@ import {
     Chat,
     PreJoin,
     VoiceAssistantControlBar,
+    ChatEntry,
 } from "@livekit/components-react";
 
 import "@livekit/components-styles";
 
-import { Participant, Track } from "livekit-client";
+import { ConnectionState, Participant, Track } from "livekit-client";
 import UploadForm from "./components/fileupload";
 
 const serverUrl = "ws://localhost:7880";
@@ -48,7 +49,7 @@ export default function App() {
     };
     return (
         <>
-            <UploadForm />
+
             <div>
                 <form onSubmit={handleRoomCreation}>
                     <input
@@ -94,7 +95,8 @@ export default function App() {
         share tracks and to leave the room. */}
                 <ControlBar />
                 <VoiceAssistantControlBar />
-                <Chat></Chat>
+                <Chat>
+                </Chat>
             </LiveKitRoom>
         </>
     );
